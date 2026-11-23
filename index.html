@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Беговой сезон 2027</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky header with race countdown → week strip coloured by block → tabs → content column (max 760px). */
+:root{
+  --bg:#f3f5f6; --surface:#ffffff; --surface-2:#e8ecee; --line:#d3dade;
+  --fg:#15202a; --muted:#5b6872; --accent:#e4572e; --accent-fg:#ffffff;
+  --ok:#2f8f5b; --warn:#c98a12; --bad:#c83c3c;
+  --b-ret:#2a9d8f; --b-base:#3a7bd5; --b-thr:#7b5bd6; --b-hm:#e4572e; --b-rec:#8a959c; --b-mar:#b8325a;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f151a; --surface:#172028; --surface-2:#1f2a33; --line:#2c3943;
+  --fg:#e6ecef; --muted:#93a1ab; --accent:#ff6b3d; --accent-fg:#14100e;
+  --ok:#4cc184; --warn:#e9b13f; --bad:#ef6a6a;
+  --b-ret:#3cc2b2; --b-base:#5b9bf0; --b-thr:#9d82f0; --b-hm:#ff6b3d; --b-rec:#7f8b93; --b-mar:#e0557f;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f151a; --surface:#172028; --surface-2:#1f2a33; --line:#2c3943;
+  --fg:#e6ecef; --muted:#93a1ab; --accent:#ff6b3d; --accent-fg:#14100e;
+  --ok:#4cc184; --warn:#e9b13f; --bad:#ef6a6a;
+  --b-ret:#3cc2b2; --b-base:#5b9bf0; --b-thr:#9d82f0; --b-hm:#ff6b3d; --b-rec:#7f8b93; --b-mar:#e0557f;
+  color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+.wrap>*,.card>*{min-width:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--f-display);letter-spacing:.01em;line-height:1.1;text-wrap:balance;margin:0}
+h1{font-size:30px;text-transform:uppercase}
+h2{font-size:24px}
+h3{font-size:19px}
+.eyebrow{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+a{color:var(--accent)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px 10px;border-bottom:1px solid var(--line);margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding-inline:max(16px,env(safe-area-inset-left,0px))}
+.top-in{max-width:760px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-end;justify-content:space-between}
+.races{display:flex;gap:14px}
+.race{display:flex;flex-direction:column;align-items:flex-end}
+.race b{font-family:var(--f-mono);font-size:22px;line-height:1}
+.race span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+
+.strip{display:flex;gap:4px;overflow-x:auto;padding-block:4px 8px;scrollbar-width:thin}
+.wk{flex:0 0 auto;width:34px;height:44px;border-radius:6px;border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative}
+.wk .n{font-family:var(--f-mono);font-size:12px}
+.wk .bar{width:18px;height:4px;border-radius:2px}
+.wk.cur::after{content:"";position:absolute;top:-4px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.wk.sel{border-color:var(--fg);background:var(--surface-2)}
+.wk.race{box-shadow:inset 0 0 0 2px var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line)}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:8px 10px;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--fg);border-color:var(--accent)}
+
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--fg)}
+.chip i{width:8px;height:8px;border-radius:50%}
+.weekhead{display:flex;flex-direction:column;gap:8px}
+.weekhead .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.goal{color:var(--muted)}
+.frame{font-size:13px;color:var(--muted);background:var(--surface-2);border-radius:8px;padding:8px 12px}
+.nav{display:flex;justify-content:space-between;gap:8px}
+.nav button{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:13px}
+.nav button:disabled{opacity:.4;cursor:default}
+
+.days{display:flex;flex-direction:column;gap:8px}
+.day{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.day.today{border-color:var(--accent)}
+.day summary{list-style:none;display:grid;grid-template-columns:52px 1fr auto;gap:10px;padding:10px 12px;cursor:pointer;align-items:start}
+.day summary::-webkit-details-marker{display:none}
+.dname{display:flex;flex-direction:column;line-height:1.1}
+.dname b{font-family:var(--f-display);font-size:20px;text-transform:uppercase}
+.dname span{font-size:12px;color:var(--muted)}
+.items{display:flex;flex-direction:column;gap:4px;min-width:0}
+.it{display:flex;gap:8px;align-items:baseline;font-size:14px}
+.tag{flex:0 0 auto;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:4px;color:var(--accent-fg)}
+.t-run{background:var(--b-ret)} .t-long{background:var(--b-base)} .t-key{background:var(--b-thr)} .t-race{background:var(--accent)}
+.t-str{background:var(--fg);color:var(--bg)} .t-mob{background:var(--surface-2);color:var(--muted)} .t-test{background:var(--warn)}
+.status{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.s-done{background:color-mix(in srgb,var(--ok) 20%,transparent);color:var(--ok)}
+.s-part{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn)}
+.s-skip{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+.s-none{color:var(--muted)}
+
+.log{border-top:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.field>.lbl{font-size:12px;font-weight:600;color:var(--muted)}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button{min-width:38px;padding:6px 10px;border-radius:6px;border:1px solid var(--line);background:var(--bg);font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+input[type=number],textarea{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px}
+textarea{min-height:60px;resize:vertical}
+.save{align-self:flex-start;background:var(--accent);color:var(--accent-fg);border:0;border-radius:8px;padding:9px 18px;font-weight:600}
+.save:disabled{opacity:.5;cursor:default}
+.hint{font-size:12px;color:var(--muted)}
+.dbnote{font-size:13px;color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:8px 12px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.blk{border-left:4px solid var(--c);padding-left:12px}
+.blk .dates{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.tblw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.who{font-size:11px;color:var(--muted);white-space:nowrap}
+.rule{display:grid;grid-template-columns:28px 1fr;gap:10px}
+.rule .num{font-size:18px;color:var(--accent)}
+.sum{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted)}
+.sum b{color:var(--fg);font-family:var(--f-mono)}
+@media (max-width:480px){.races{width:100%;justify-content:space-between}.race{align-items:flex-start}.race span{font-size:10px}h1{font-size:24px}.race b{font-size:18px}.grid2{grid-template-columns:1fr}.day summary{grid-template-columns:44px 1fr}.day summary .status{grid-column:2}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="top-in">
+  <div><div class="eyebrow">Беговой план · 23.11.2026 → 05.09.2027</div><h1>Беговой сезон 2027</h1></div>
+  <div class="races">
+    <div class="race"><b class="num" id="d-hm">—</b><span>дн. до ЗаБег.РФ</span></div>
+    <div class="race"><b class="num" id="d-mar">—</b><span>дн. до Пушкин–Петербург</span></div>
+  </div>
+</div></header>
+
+<div class="wrap">
+  <div>
+    <div class="strip" id="strip" aria-label="Недели сезона"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="week" aria-selected="true">Неделя</button>
+    <button role="tab" data-tab="program" aria-selected="false">Программа</button>
+    <button role="tab" data-tab="strength" aria-selected="false">Силовая</button>
+    <button role="tab" data-tab="rules" aria-selected="false">Правила</button>
+    <button role="tab" data-tab="blog" aria-selected="false">42km.blog</button>
+  </div>
+
+  <section id="tab-week" class="wrap" style="gap:14px"></section>
+
+  <section id="tab-program" class="wrap" hidden></section>
+
+  <section id="tab-strength" class="wrap" hidden>
+    <div class="card">
+      <div class="eyebrow">Блоки 0–1 · вт и сб (с января — вт и чт) · ~35 мин</div>
+      <h2>Комплекс А</h2>
+      <p class="goal" style="margin:0">Основа — упражнения реабилитолога, подобранные под бедро. Добавлены икры и верх тела.</p>
+      <div class="tblw"><table>
+        <thead><tr><th>Упражнение</th><th>Подходы</th><th>Как</th></tr></thead>
+        <tbody>
+          <tr><td>Ходьба монстра с резиной <div class="who">реабилитолог</div></td><td class="num">2–4</td><td>Разминка, «до ощущений» в средней ягодичной</td></tr>
+          <tr><td>Мост со скольжением на одной ноге <div class="who">реабилитолог</div></td><td class="num">3×6–8</td><td>Медленно, 3 с на выпрямление. Больно — укороти скольжение</td></tr>
+          <tr><td>Румынская тяга, гиря 16 кг <div class="who">реабилитолог</div></td><td class="num">3×10–12</td><td>RPE 6–7. Наклон, пока поясница ровная и бугор не болит</td></tr>
+          <tr><td>Болгарский сплит-присед <div class="who">реабилитолог</div></td><td class="num">3×8–10</td><td>Медленно, колено к носку. 2 недели без веса, потом гиря у груди</td></tr>
+          <tr><td>Подъём на носок одной ноги, гантель 10 кг</td><td class="num">3×10–12</td><td>Со ступеньки, вниз 3 с</td></tr>
+          <tr><td>Боковая планка с отведением колена, резина <div class="who">реабилитолог</div></td><td class="num">2×10–12</td><td>На каждую сторону</td></tr>
+          <tr><td>Тяга гири в наклоне с опорой</td><td class="num">3×10</td><td>На руку, тянуть к карману</td></tr>
+          <tr><td>Жим гири лёжа на полу</td><td class="num">3×10</td><td>На руку, локоть под 45°</td></tr>
+          <tr><td>Нимб (halo)</td><td class="num">2×8</td><td>В каждую сторону</td></tr>
+        </tbody>
+      </table></div>
+      <ul class="hint" style="font-size:13px">
+        <li>Повышай вес или повторы, когда упражнение 2 тренировки подряд идёт на RPE 6 (4 повтора в запасе).</li>
+        <li>Утренняя проверка: мост на одной ноге. Больнее обычного — следующую силовую делай легче.</li>
+        <li>Изометрия и сгибание колена с резиной — в дни без силовой. Упражнения Козлова — ежедневно.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Блоки 1–3 · добавляем постепенно</div>
+      <h2>Комплекс Б</h2>
+      <ul>
+        <li>Болгарский сплит-присед с гирей — 3×6–8, медленно.</li>
+        <li>Румынская тяга на одной ноге с гирей — 3×8, вместо двуногой. Сначала малая амплитуда.</li>
+        <li>Кубковый присед с паузой — 3×8, до параллели бедра с полом.</li>
+        <li>Махи гирей — 3×15, только после 4 недель без боли и уверенной румынской тяги.</li>
+        <li>Нордические сгибания с резиной — 2×4–6. Поздний этап для больного сухожилия.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Ориентировочно февраль–март</div>
+      <h2>Когда нужен зал</h2>
+      <p style="margin:0">Когда болгарский присед и румынская тяга на одной ноге с 16 кг идут 3×10 с запасом в 4+ повтора. Тогда 1 раз в неделю зал (присед или жим ногами, румынская тяга со штангой, носки в тренажёре — 3–4×4–6), 1 раз дома комплекс Б. Экономичность бега улучшает именно тяжёлая сила, от 80% максимума.</p>
+    </div>
+    <div class="card">
+      <h3>Что изменено в комплексе Gemini</h3>
+      <ul>
+        <li>Махи гирей отложены: резкая нагрузка на хамстринг в растянутом положении, при тендинопатии их вводят последними.</li>
+        <li>Кубковый присед — только до параллели: глубокий присед пережимает сухожилие у бугра.</li>
+        <li>Ноги переведены с 15–20 повторов на тяжёлые малые повторы. Верх тела оставлен как был.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="tab-rules" class="wrap" hidden></section>
+
+  <section id="tab-blog" class="wrap" hidden>
+    <div class="card">
+      <div class="eyebrow">Надежда Калачева · статьи о зонах, тестах, интервалах, норвежском методе, марафоне, технике</div>
+      <h2>Сверка с 42km.blog</h2>
+      <div class="tblw"><table>
+        <thead><tr><th>У неё</th><th>В плане</th></tr></thead>
+        <tbody>
+          <tr><td>80% объёма в «зелёной» зоне. Многие любители до неё вообще не доходят</td><td>Твоя ошибка весны 2026. Правило 3</td></tr>
+          <tr><td>Ощущения важнее пульса, часы с руки ошибаются</td><td>Правило 6</td></tr>
+          <tr><td>Ускорения 15–20 с, 6–10 раз, раз в неделю, можно в горку</td><td>По ровному, с 80% до максимума за 2 месяца</td></tr>
+          <tr><td>Интервалы у порога вместо длинного темпа, темп не длиннее 5–7 км</td><td>Ключевая тренировка блока 2</td></tr>
+          <tr><td>Отрезки в целевом темпе внутри лонга</td><td>Блок 3 и марафон</td></tr>
+          <tr><td>Ровный объём месяцами важнее ударных недель</td><td>Марафонский блок</td></tr>
+          <tr><td>Минимум 2 силовые в неделю</td><td>Есть</td></tr>
+          <tr><td>Длинные пробежки натощак</td><td>Пока нет: польза для результата не доказана, при реабилитации лучше есть</td></tr>
+        </tbody>
+      </table></div>
+      <p class="hint" style="margin:0">Цикл видео о планировании сезона (YouTube, декабрь 2024) не изучен: схема межсезонья взята из твоего пересказа.</p>
+    </div>
+    <div class="card">
+      <h3>Источники</h3>
+      <ul style="font-size:14px">
+        <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12421110" target="_blank" rel="noopener">Frandsen et al., BJSM 2025 — скачки длины пробежки и травмы</a></li>
+        <li><a href="https://www.pubmed.gov/27084841/" target="_blank" rel="noopener">Goom et al., JOSPT 2016 — тендинопатия хамстринга</a></li>
+        <li><a href="https://link.springer.com/article/10.1007/s40279-023-01978-y" target="_blank" rel="noopener">Метаанализ 2023 — силовая и экономичность бега</a></li>
+        <li><a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9653533/" target="_blank" rel="noopener">Метаанализ 2022 — тяжёлая силовая против плиометрики</a></li>
+        <li><a href="https://42km.blog/blog" target="_blank" rel="noopener">42km.blog</a></li>
+        <li><a href="https://pushkin-run.ru/pushkin-spb-2027" target="_blank" rel="noopener">Пушкин–Петербург 2027</a></li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+const BL={
+  ret:{name:"Возврат",c:"--b-ret"}, base:{name:"База",c:"--b-base"}, thr:{name:"Сила и порог",c:"--b-thr"},
+  hm:{name:"Полумарафон",c:"--b-hm"}, rec:{name:"Восстановление",c:"--b-rec"}, mar:{name:"Марафон / 30 км",c:"--b-mar"}
+};
+const DN=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+const MOB={t:"mob",x:"Изометрия + упражнения Козлова"};
+const SB={t:"mob",x:"Shadowboxing по желанию"};
+const REST={t:"mob",x:"Отдых, упражнения Козлова"};
+const run=(x)=>({t:"run",x}), lng=(x)=>({t:"long",x}), key=(x)=>({t:"key",x}), str=(x)=>({t:"str",x}), race=(x)=>({t:"race",x}), test=(x)=>({t:"test",x});
+const SA=str("Силовая: комплекс А"), SAB=str("Силовая: комплекс А → Б"), SBk=str("Силовая: комплекс Б (с марта — 1 раз зал)");
+
+function week(block,title,goal,d,extra){return {block,title,goal,d,frame:block!=="ret",...(extra||{})}}
+function b0(tue,thu,sat,goal,deload){
+  return week("ret",deload?"Разгрузка":"Возврат",goal,{
+    1:[MOB],2:[run(tue+" мин Z1, по ровному"),SA],3:[MOB,SB],4:[run(thu+" мин Z1")],5:[MOB],
+    6:[lng(sat+" мин Z1. С группой 8:00 — только первые 15–20 мин или с минутой шагом каждые 8–10 мин"),SA],7:[REST,SB]});
+}
+function b1(long,strides,opts={}){
+  const tue=[run("35–40 мин Z1"+(strides?". В конце "+strides:""))]; tue.push(SAB);
+  const thu=opts.test?[test("Тест аэробного порога: ступени по 5 мин (только с нагрудным датчиком), иначе 35 мин Z1")]:[run("30–40 мин Z1")];
+  thu.push(SAB);
+  return week("base",opts.deload?"Разгрузка":"База",opts.goal||"Объём в Z1, лонг растёт",{
+    1:[MOB],2:tue,3:[MOB,SB],4:thu,5:[MOB],6:[lng(long+" мин Z1"+(long>=50?" — можно целиком с субботней группой, если пульс ≤137":""))],
+    7:[opts.sun?run(opts.sun):REST]});
+}
+function b2(k,long,opts={}){
+  return week("thr",opts.deload?"Разгрузка":"Порог",opts.goal||"Интервалы у порога + длиннее лонг",{
+    1:[MOB],2:[key(k),SBk],3:[MOB,SB],4:[run("40 мин Z1"+(opts.strides?" + "+opts.strides:"")),SBk],5:[MOB],
+    6:[opts.race?race(opts.race):lng(long+" мин Z1")],7:[run(opts.sun||"35–40 мин Z1")]});
+}
+function b3(k,long,goal,opts={}){
+  return week("hm",opts.deload?"Разгрузка":"Специальная",goal,{
+    1:[MOB],2:[key(k),SBk],3:[MOB,SB],4:[run("40 мин Z1 + 6 ускорений"),opts.light?str("Силовая: лёгкая, 2 подхода"):SBk],5:[MOB],
+    6:[lng(long)],7:[run("35–40 мин Z1")]});
+}
+function mar(longKm,k,opts={}){
+  return week("mar",opts.deload?"Разгрузка":"Марафонский блок",opts.goal||"Ровный объём 40–60 км/нед",{
+    1:[MOB],2:[key(k),SBk],3:[run("40–50 мин Z1")],4:[run("45 мин Z1 + 6 ускорений"),SBk],5:[MOB],
+    6:[lng(longKm+" км Z1"+(opts.mp?". "+opts.mp:""))],7:[run("30–40 мин Z1")]});
+}
+const W=[
+  b0(25,25,30,"Бегать 3 раза без боли. Стартуем с 25–30 мин: столько бедро держит без развала техники"),
+  b0(30,30,35,"+5 мин к каждой пробежке, если боль ≤2/5 и наутро не хуже"),
+  b0(30,30,40,"Лонг 40 мин. Следи за минутой, когда «поплывёт» техника"),
+  b0(25,25,30,"Снизить объём на треть, дать тканям догнать",true),
+  b0(30,35,45,"Последняя неделя возврата. Дальше — база"),
+  b1(50,"",{goal:"Начало базы. Праздники — лонг можно сдвинуть на 1–2 января"}),
+  b1(55,"",{sun:"30 мин Z1 — 4-я пробежка, только если боль ≤1/5"}),
+  b1(40,"",{deload:true,goal:"Разгрузка",sun:"30 мин Z1 (если 4-я пробежка уже введена)"}),
+  b1(60,"4×15 с на 80% по ровному, отдых 2–3 мин шагом",{sun:"30–35 мин Z1",goal:"Начинаем «сырую скорость», если 3 недели боль ≤1/5"}),
+  b1(65,"4×15 с на 80%",{sun:"35 мин Z1",test:true}),
+  b1(50,"6×15 с на 85%",{deload:true,goal:"Разгрузка",sun:"30 мин Z1"}),
+  b1(70,"6–8×15–20 с до 90%",{sun:"40 мин Z1",goal:"Конец базы: лонг 70 мин"}),
+  b2("15 мин Z1 → 5×6 мин у порога (пара слов, не фраза), отдых 1 мин → 10 мин Z1",75,{strides:"6 ускорений по 20 с"}),
+  b2("15 мин Z1 → 5×6 мин у порога, отдых 1 мин → 10 мин Z1",80,{strides:"6 ускорений по 20 с"}),
+  b2("15 мин Z1 → 4×5 мин у порога, отдых 1 мин",60,{deload:true,goal:"Разгрузка"}),
+  b2("15 мин Z1 → 5×1 км у порога, отдых 1 мин → 10 мин Z1",85,{strides:"6–8 ускорений по 20 с"}),
+  b2("20 мин Z1 + 3×3 мин чуть быстрее порога (подводка)",0,{race:"Контрольный забег 5 или 10 км. По нему ставим темп на полумарафон",goal:"Неделя контрольного старта",sun:"30 мин Z1, восстановительный"}),
+  b2("15 мин Z1 → 3×2 км у порога, отдых 1 мин → 10 мин Z1",90,{strides:"второе занятие скоростью: 8×20 с"}),
+  b2("15 мин Z1 → 4×2 км у порога, отдых 1 мин → 10 мин Z1",95,{strides:"8×20 с"}),
+  b2("15 мин Z1 → 4×1 км у порога, отдых 1 мин",70,{deload:true,goal:"Разгрузка"}),
+  b3("15 мин Z1 → 3×2 км у порога → 10 мин Z1","100 мин: последние 3 км в темпе полумарафона","Лонг с отрезком в темпе старта"),
+  b3("15 мин Z1 → 4×2 км у порога → 10 мин Z1","110 мин: внутри 2×3 км в темпе ПМ, между ними 5 мин Z1","Длиннее отрезки в темпе старта"),
+  b3("15 мин Z1 → 3×1,5 км у порога","80 мин Z1","Разгрузка",{deload:true}),
+  b3("15 мин Z1 → 3×3 км в темпе ПМ, отдых 2 мин","120 мин: последние 6–8 км в темпе ПМ. Проверка гелей","Главная репетиция старта"),
+  b3("15 мин Z1 → 2×2 км в темпе ПМ","90 мин: внутри 4 км в темпе ПМ. Гели как на старте","Начало подводки: объём −30%",{light:true}),
+  week("hm","Неделя старта","Свежесть. Ничего нового: ни кроссовок, ни еды",{
+    1:[REST],2:[run("30 мин Z1 + 4×1 мин в темпе ПМ")],3:[MOB],4:[run("25 мин Z1 + 3 ускорения")],5:[REST],
+    6:[race("ЗаБег.РФ — полумарафон, 22 мая")],7:[run("20–30 мин шагом и лёгким бегом")]},{frame:true,race:true}),
+  week("rec","Восстановление","Только лёгкий бег. 1 июня — решение: 30 или 42 км",{
+    1:[REST],2:[run("20–25 мин Z1")],3:[MOB],4:[run("30 мин Z1")],5:[MOB],6:[lng("40 мин Z1")],7:[REST]}),
+  mar(14,"10 мин Z1 → 4×1,5 км у порога → 10 мин Z1"),
+  mar(16,"4×1,5 км у порога"),
+  mar(12,"3×1,5 км у порога",{deload:true}),
+  mar(18,"5×1,5 км у порога"),
+  mar(20,"3×2 км у порога",{mp:"Последние 5 км в темпе старта"}),
+  mar(15,"3×1,5 км у порога",{deload:true}),
+  mar(22,"4×2 км у порога",{mp:"Внутри 2×4 км в темпе старта"}),
+  mar(24,"3×3 км у порога",{mp:"Последние 8 км в темпе старта. Отработка гелей"}),
+  mar(18,"4×1,5 км у порога",{deload:true}),
+  mar(26,"4×2 км у порога",{mp:"Внутри 10 км в темпе старта"}),
+  mar(28,"3×3 км у порога",{mp:"Последние 8 км в темпе старта"}),
+  mar(30,"4×2 км у порога",{goal:"Пиковый лонг. Для 30 км — лонг 24–26 км",mp:"Гели и питьё как на старте"}),
+  mar(20,"3×2 км в темпе старта",{goal:"Подводка: объём −30%"}),
+  week("mar","Неделя старта","Свежесть, сон, углеводы последние 2 дня",{
+    1:[REST],2:[run("40 мин: внутри 3 км в темпе старта")],3:[MOB],4:[run("30 мин Z1 + 4 ускорения")],5:[REST],
+    6:[run("15–20 мин легко + 3 ускорения")],7:[race("Пушкин–Петербург, 5 сентября")]},{frame:true,race:true}),
+];
+const START=new Date(2026,10,23);
+const iso=(dt)=>dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");
+const fmt=(dt)=>String(dt.getDate()).padStart(2,"0")+"."+String(dt.getMonth()+1).padStart(2,"0");
+const addD=(dt,n)=>{const r=new Date(dt);r.setDate(r.getDate()+n);return r};
+W.forEach((w,i)=>{w.n=i+1;w.start=addD(START,i*7)});
+
+const today=new Date();today.setHours(0,0,0,0);
+let curIdx=Math.floor((today-START)/864e5/7);curIdx=Math.max(0,Math.min(W.length-1,curIdx));
+let sel=curIdx;
+try{const s=+localStorage.getItem("run.sel");if(s>0&&s<=W.length)sel=s-1}catch(e){}
+const LS="run.log.v1";
+let logs={}; let dbState="ok";
+try{logs=JSON.parse(localStorage.getItem(LS)||"{}")||{}}catch(e){logs={};dbState="off"}
+
+const days=(a,b)=>Math.max(0,Math.ceil((b-a)/864e5));
+document.getElementById("d-hm").textContent=days(today,new Date(2027,4,22));
+document.getElementById("d-mar").textContent=days(today,new Date(2027,8,5));
+
+function el(tag,attrs,...kids){const e=document.createElement(tag);if(attrs)for(const k in attrs){if(k==="class")e.className=attrs[k];else if(k==="text")e.textContent=attrs[k];else if(k.startsWith("on"))e.addEventListener(k.slice(2),attrs[k]);else e.setAttribute(k,attrs[k])}for(const c of kids)if(c!=null)e.append(c);return e}
+
+function renderStrip(){
+  const s=document.getElementById("strip");s.textContent="";
+  W.forEach((w,i)=>{
+    const b=el("button",{class:"wk"+(i===curIdx?" cur":"")+(i===sel?" sel":"")+(w.race?" race":""),title:"Неделя "+w.n+" · "+fmt(w.start)+" · "+BL[w.block].name,"aria-label":"Неделя "+w.n,onclick:()=>{sel=i;save();go("week")}},
+      el("span",{class:"n num",text:String(w.n)}),el("span",{class:"bar",style:"background:var("+BL[w.block].c+")"}));
+    s.append(b);
+  });
+  const t=s.children[sel];if(t)t.scrollIntoView({block:"nearest",inline:"center"});
+  const lg=document.getElementById("legend");lg.textContent="";
+  for(const k in BL){const sp=el("span",null,el("i",{style:"background:var("+BL[k].c+")"}),BL[k].name);lg.append(sp)}
+}
+function save(){try{localStorage.setItem("run.sel",String(sel+1))}catch(e){}}
+
+const ST={done:["Сделал","s-done"],part:["Частично","s-part"],skip:["Пропустил","s-skip"]};
+function renderWeek(){
+  const w=W[sel],sec=document.getElementById("tab-week");sec.textContent="";
+  const end=addD(w.start,6);
+  const head=el("div",{class:"weekhead"},
+    el("div",{class:"row"},
+      el("span",{class:"chip"},el("i",{style:"background:var("+BL[w.block].c+")"}),BL[w.block].name),
+      el("span",{class:"chip num",text:"Неделя "+w.n+" · "+fmt(w.start)+"–"+fmt(end)}),
+      sel===curIdx?el("span",{class:"chip",style:"background:var(--accent);color:var(--accent-fg)",text:"Сейчас"}):null),
+    el("h2",{text:w.title}),el("div",{class:"goal",text:w.goal}));
+  sec.append(head);
+  if(w.frame)sec.append(el("div",{class:"frame",text:"Каркас: точные цифры уточняем ближе к блоку по твоему дневнику и самочувствию."}));
+  // week summary
+  let runs=0,doneRuns=0,maxPain=null;
+  for(let d=1;d<=7;d++){const items=w.d[d]||[];const isRun=items.some(x=>["run","long","key","race","test"].includes(x.t));const lg=logs[iso(addD(w.start,d-1))];
+    if(isRun)runs++; if(isRun&&lg&&lg.status==="done")doneRuns++;
+    if(lg){for(const p of [lg.painDuring,lg.painMorning])if(typeof p==="number")maxPain=Math.max(maxPain??0,p)}}
+  sec.append(el("div",{class:"sum"},el("span",null,"Пробежек сделано: ",el("b",{text:doneRuns+" / "+runs})),el("span",null,"Макс. боль за неделю: ",el("b",{text:maxPain==null?"—":maxPain+"/5"}))));
+  if(dbState!=="ok")sec.append(el("div",{class:"dbnote",text:"Браузер не даёт сохранять записи (возможно, приватный режим). Открой страницу в обычной вкладке."}));
+  {const msg=el("span",{class:"hint"});const b=el("button",{type:"button",class:"save",style:"background:var(--surface-2);color:var(--fg)",text:"Скопировать дневник для Claude"});
+   b.addEventListener("click",()=>copyLog(b,msg));
+   const ta=el("textarea",{id:"export-box",readonly:"","aria-label":"Текст дневника"});ta.hidden=true;
+   sec.append(el("div",{class:"dbnote",style:"display:flex;flex-direction:column;gap:8px"},
+     el("span",{text:"Записи хранятся только в этом браузере на этом телефоне. Раз в 1–2 недели копируй дневник и присылай в чат."}),
+     el("div",{style:"display:flex;gap:12px;align-items:center;flex-wrap:wrap"},b,msg),ta))}
+  const list=el("div",{class:"days"});
+  for(let d=1;d<=7;d++){
+    const date=addD(w.start,d-1),key=iso(date),lg=logs[key];
+    const items=el("div",{class:"items"});
+    for(const it of (w.d[d]||[])){
+      const lab={run:"бег",long:"лонг",key:"ключевая",race:"старт",str:"сила",mob:"ОФП",test:"тест"}[it.t];
+      items.append(el("div",{class:"it"},el("span",{class:"tag t-"+it.t,text:lab}),el("span",{text:it.x})));
+    }
+    const st=lg&&ST[lg.status];
+    const sum=el("summary",null,el("div",{class:"dname"},el("b",{text:DN[d-1]}),el("span",{class:"num",text:fmt(date)})),items,
+      el("span",{class:"status "+(st?st[1]:"s-none"),text:st?st[0]+(typeof lg.painDuring==="number"?" · "+lg.painDuring+"/5":""):"записать"}));
+    const det=el("details",{class:"day"+(iso(today)===key?" today":"")},sum,logForm(key,lg||{}));
+    list.append(det);
+  }
+  sec.append(list);
+  sec.append(el("div",{class:"nav"},
+    el("button",{onclick:()=>{sel--;save();renderAll()},...(sel===0?{disabled:""}:{})},"← Неделя "+(sel)),
+    el("button",{onclick:()=>{sel=curIdx;save();renderAll()}},"К текущей"),
+    el("button",{onclick:()=>{sel++;save();renderAll()},...(sel===W.length-1?{disabled:""}:{})},"Неделя "+(sel+2)+" →")));
+}
+function seg(id,opts,val,onpick){
+  const box=el("div",{class:"seg",role:"group",id});
+  for(const [v,l] of opts){const b=el("button",{type:"button","aria-pressed":String(val===v),text:l,onclick:()=>{const nv=(cur===v)?null:v;cur=nv;onpick(nv);for(const c of box.children)c.setAttribute("aria-pressed",String(c===b&&nv!==null))}});box.append(b)}
+  let cur=val;return box;
+}
+function logForm(key,lg){
+  const st={status:lg.status??null,painDuring:lg.painDuring??null,painMorning:lg.painMorning??null};
+  const P=[0,1,2,3,4,5].map(n=>[n,String(n)]);
+  const wrap=el("div",{class:"log"});
+  wrap.append(el("div",{class:"field"},el("span",{class:"lbl",text:"Как прошло"}),seg("st-"+key,[["done","Сделал"],["part","Частично"],["skip","Пропустил"]],st.status,v=>st.status=v)));
+  wrap.append(el("div",{class:"grid2"},
+    el("div",{class:"field"},el("span",{class:"lbl",text:"Боль во время (0–5)"}),seg("pd-"+key,P,st.painDuring,v=>st.painDuring=v)),
+    el("div",{class:"field"},el("span",{class:"lbl",text:"Боль наутро (0–5)"}),seg("pm-"+key,P,st.painMorning,v=>st.painMorning=v))));
+  const tech=el("input",{type:"number",min:"0",max:"300",inputmode:"numeric",id:"tech-"+key,placeholder:"не плыла"});if(lg.techMin!=null)tech.value=lg.techMin;
+  const hr=el("input",{type:"number",min:"60",max:"220",inputmode:"numeric",id:"hr-"+key,placeholder:"—"});if(lg.hr!=null)hr.value=lg.hr;
+  wrap.append(el("div",{class:"grid2"},
+    el("div",{class:"field"},el("label",{for:"tech-"+key,text:"Техника «поплыла» на минуте"}),tech),
+    el("div",{class:"field"},el("label",{for:"hr-"+key,text:"Средний пульс"}),hr)));
+  const note=el("textarea",{id:"note-"+key,placeholder:"Где болело, как спал, погода…"});note.value=lg.note||"";
+  wrap.append(el("div",{class:"field"},el("label",{for:"note-"+key,text:"Заметка"}),note));
+  const msg=el("span",{class:"hint"});
+  const btn=el("button",{type:"button",class:"save",text:"Сохранить"});
+  if(dbState!=="ok")btn.disabled=true;
+  btn.addEventListener("click",async()=>{
+    const num=(i)=>i.value===""?null:Math.round(+i.value);
+    const body={date:key,status:st.status,painDuring:st.painDuring,painMorning:st.painMorning,techMin:num(tech),hr:num(hr),note:note.value.trim().slice(0,1000),updatedAt:new Date().toISOString()};
+    const empty=!body.status&&body.painDuring==null&&body.painMorning==null&&body.techMin==null&&body.hr==null&&!body.note;
+    const next={...logs};if(empty)delete next[key];else next[key]=body;
+    try{localStorage.setItem(LS,JSON.stringify(next));logs=next;msg.textContent="Сохранено";updateStatuses()}
+    catch(e){msg.textContent="Не сохранилось: браузер запрещает хранение."}
+  });
+  wrap.append(el("div",{style:"display:flex;gap:12px;align-items:center"},btn,msg));
+  return wrap;
+}
+
+function renderProgram(){
+  const sec=document.getElementById("tab-program");sec.textContent="";
+  const blocks=[
+    ["ret","23.11 – 27.12.2026","5 недель",["3 пробежки в неделю, всё в Z1, без ускорений","Старт с 25–30 мин: столько бедро держит без развала техники","Лонг 30 → 45 мин. Субботняя группа 8:00 пока быстрая — первые 15–20 мин с ней"]],
+    ["base","28.12.2026 – 14.02.2027","7 недель",["4-я пробежка — если боль ≤1/5","Лонг 50 → 70 мин, схема 2+1","«Сырая скорость» по ровному со 2-й половины января: 80% → 90%","Конец января — тест порога (с нагрудным датчиком)"]],
+    ["thr","15.02 – 11.04.2027","8 недель",["Вторник: интервалы у порога — 5×6 мин, 5×1 км, 3–4×2 км, отдых 1 мин","Лонг 75 → 95 мин","Середина марта — контрольный старт 5 или 10 км","С марта силовая: 1 раз зал, 1 раз дома"]],
+    ["hm","12.04 – 22.05.2027","6 недель",["Лонги 100–120 мин с отрезками в темпе полумарафона","Отработка гелей на 2–3 лонгах","Подводка 10–12 дней: объём −30–40%","22 мая — ЗаБег.РФ"]],
+    ["rec","24.05 – 30.05.2027","1 неделя",["Только лёгкий бег","1 июня — решение: 30 или 42 км"]],
+    ["mar","31.05 – 05.09.2027","14 недель",["Ровные 40–60 км в неделю","Лонг 14 → 30 км (для 30 км — до 24–26), отрезки в темпе старта","Подводка 2 недели","5 сентября — Пушкин–Петербург"]],
+  ];
+  for(const [k,dates,len,pts] of blocks){
+    const c=el("div",{class:"card"});const inner=el("div",{class:"blk",style:"--c:var("+BL[k].c+")"});
+    inner.append(el("div",{class:"dates",text:dates+" · "+len}),el("h2",{text:BL[k].name}));
+    const ul=el("ul");for(const p of pts)ul.append(el("li",{text:p}));inner.append(ul);c.append(inner);sec.append(c);
+  }
+  const gate=el("div",{class:"card"},el("div",{class:"eyebrow",text:"1 июня 2027"}),el("h2",{text:"42 км или 30 км"}),
+    el("p",{style:"margin:0",text:"Выбираем 42 км, только если одновременно выполнено всё:"}));
+  const ul=el("ul");for(const p of ["полумарафон пробежан без боли","лонг 2 часа в мае даётся спокойно","с января не было пропусков из-за ноги"])ul.append(el("li",{text:p}));
+  gate.append(ul,el("p",{class:"hint",style:"margin:0",text:"Иначе 30 км — это тоже на 9 км длиннее твоей самой длинной дистанции."}));
+  sec.append(gate);
+}
+function renderRules(){
+  const sec=document.getElementById("tab-rules");sec.textContent="";
+  const R=[
+    ["Лонг ≤ +10%","Самая длинная пробежка — не больше чем на 10% длиннее самой длинной за последние 30 дней. У 5200 бегунов скачок на 10–30% давал в 1,6 раза больше травм, больше чем вдвое — в 2,3 раза."],
+    ["Правило боли","Во время бега ≤2/5. Наутро не хуже, чем было. От недели к неделе не растёт. Нарушено хоть одно — следующую неделю повторяем, а не повышаем."],
+    ["Правило техники","Шаг начал разваливаться — переходи на шаг. Через 1–2 мин нормально — добегай. Нет — заканчивай шагом."],
+    ["Лёгкое — лёгкое","Z1 ≤137. Весной 2026 почти всё, включая лонги, шло на 140–146 — одна из вероятных причин травмы."],
+    ["Разгрузка","После 2–3 недель роста — неделя с объёмом −25–30%."],
+    ["Сила в дни бега","После пробежки или вечером. Дни без бега — лёгкие: изометрия, Козлов, shadowboxing."],
+    ["Ощущения важнее цифры","Лёгкий бег — говоришь полными фразами и можешь дышать носом. Пульс с руки ошибается и запаздывает."],
+  ];
+  R.forEach(([h,t],i)=>sec.append(el("div",{class:"card rule"},el("span",{class:"num",text:String(i+1)}),el("div",null,el("h3",{text:h}),el("p",{style:"margin:4px 0 0",text:t})))));
+  const z=el("div",{class:"card"},el("h3",{text:"Зоны пульса (макс. 183)"}));
+  const tb=el("table",null,el("thead",null,el("tr",null,el("th",{text:"Зона"}),el("th",{text:"Пульс"}),el("th",{text:"Ощущение"}))));
+  const body=el("tbody");
+  for(const [a,b,c] of [["Z1","≤137","Полные фразы, дыхание носом"],["Z2","138–144","Говорить можно, но уже не хочется"],["Z3","145–154","Пара слов — зона порога"],["Z4","155–167","Только отдельные слова"],["Z5",">167","Не до разговоров"]])
+    body.append(el("tr",null,el("td",{class:"num",text:a}),el("td",{class:"num",text:b}),el("td",{text:c})));
+  tb.append(body);z.append(el("div",{class:"tblw"},tb));sec.append(z);
+}
+
+function go(tab){
+  for(const b of document.querySelectorAll("#tabs button"))b.setAttribute("aria-selected",String(b.dataset.tab===tab));
+  for(const s of ["week","program","strength","rules","blog"])document.getElementById("tab-"+s).hidden=(s!==tab);
+  if(location.hash!=="#"+tab)history.replaceState(null,"","#"+tab);
+  renderAll();
+}
+function renderAll(){renderStrip();renderWeek()}
+document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.closest("button[data-tab]");if(b)go(b.dataset.tab)});
+window.addEventListener("hashchange",()=>{const t=location.hash.slice(1);if(["week","program","strength","rules","blog"].includes(t))go(t)});
+renderProgram();renderRules();
+const h0=location.hash.slice(1);go(["week","program","strength","rules","blog"].includes(h0)?h0:"week");
+
+function exportText(){
+  const keys=Object.keys(logs).sort();
+  if(!keys.length)return "";
+  const s={done:"сделал",part:"частично",skip:"пропустил"};
+  const lines=["Дневник бега"];
+  for(const k of keys){const l=logs[k];const p=[k];
+    if(l.status)p.push(s[l.status]);
+    if(l.painDuring!=null)p.push("боль во время "+l.painDuring+"/5");
+    if(l.painMorning!=null)p.push("наутро "+l.painMorning+"/5");
+    if(l.techMin!=null)p.push("техника поплыла на "+l.techMin+" мин");
+    if(l.hr!=null)p.push("пульс "+l.hr);
+    if(l.note)p.push(l.note.replace(/\s+/g," "));
+    lines.push(p.join(" · "))}
+  return lines.join("\n");
+}
+async function copyLog(btn,msg){
+  const t=exportText();
+  if(!t){msg.textContent="В дневнике пока нет записей.";return}
+  try{await navigator.clipboard.writeText(t);msg.textContent="Скопировано — вставь в чат с Claude."}
+  catch(e){const ta=document.getElementById("export-box");ta.hidden=false;ta.value=t;ta.focus();ta.select();msg.textContent="Выдели текст ниже и скопируй вручную."}
+}
+function updateStatuses(){
+  const w=W[sel];const list=document.querySelectorAll("#tab-week details.day");
+  list.forEach((det,i)=>{const lg=logs[iso(addD(w.start,i))];const s=det.querySelector("summary .status");const st=lg&&ST[lg.status];
+    s.className="status "+(st?st[1]:"s-none");s.textContent=st?st[0]+(typeof lg.painDuring==="number"?" · "+lg.painDuring+"/5":""):"записать"});
+}
+</script>
+</body>
+</html>
