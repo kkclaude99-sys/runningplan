@@ -287,7 +287,7 @@ function mar(longKm,k,opts={}){
 const W=[
   b0(25,25,30,"Бегать 3 раза без боли. Стартуем с 25–30 мин: столько бедро держит без развала техники"),
   b0(30,30,35,"+5 мин к каждой пробежке, если боль ≤2/5 и наутро не хуже"),
-  b0(30,30,40,"Лонг 40 мин. Следи за минутой, когда «поплывёт» техника"),
+  b0(30,30,40,"Лонг 40 мин. Если техника начнёт разваливаться — перейди на шаг и отметь это в заметке"),
   b0(25,25,30,"Снизить объём на треть, дать тканям догнать",true),
   b0(30,35,45,"Последняя неделя возврата. Дальше — база"),
   b1(50,"",{goal:"Начало базы. Праздники — лонг можно сдвинуть на 1–2 января"}),
@@ -401,7 +401,7 @@ function renderWeek(){
     const st=lg&&ST[lg.status];
     const sum=el("summary",null,el("div",{class:"dname"},el("b",{text:DN[d-1]}),el("span",{class:"num",text:fmt(date)})),items,
       el("span",{class:"status "+(st?st[1]:"s-none"),text:st?st[0]+(typeof lg.painDuring==="number"?" · "+lg.painDuring+"/5":""):"записать"}));
-    const det=el("details",{class:"day"+(iso(today)===key?" today":"")},sum,logForm(key,lg||{}));
+    const det=el("details",{class:"day"+(iso(today)===key?" today":"")},sum,logForm(key,lg||{},(w.d[d]||[]).some(x=>["run","long","key","race","test"].includes(x.t))));
     list.append(det);
   }
   sec.append(list);
@@ -415,28 +415,31 @@ function seg(id,opts,val,onpick){
   for(const [v,l] of opts){const b=el("button",{type:"button","aria-pressed":String(val===v),text:l,onclick:()=>{const nv=(cur===v)?null:v;cur=nv;onpick(nv);for(const c of box.children)c.setAttribute("aria-pressed",String(c===b&&nv!==null))}});box.append(b)}
   let cur=val;return box;
 }
-function logForm(key,lg){
+function logForm(key,lg,isRun){
   const st={status:lg.status??null,painDuring:lg.painDuring??null,painMorning:lg.painMorning??null};
   const P=[0,1,2,3,4,5].map(n=>[n,String(n)]);
   const wrap=el("div",{class:"log"});
-  wrap.append(el("div",{class:"field"},el("span",{class:"lbl",text:"Как прошло"}),seg("st-"+key,[["done","Сделал"],["part","Частично"],["skip","Пропустил"]],st.status,v=>st.status=v)));
+  const sleep=el("input",{type:"number",min:"0",max:"14",step:"0.5",inputmode:"decimal",id:"sleep-"+key,placeholder:"напр. 7.5"});if(lg.sleep!=null)sleep.value=lg.sleep;
   wrap.append(el("div",{class:"grid2"},
-    el("div",{class:"field"},el("span",{class:"lbl",text:"Боль во время (0–5)"}),seg("pd-"+key,P,st.painDuring,v=>st.painDuring=v)),
-    el("div",{class:"field"},el("span",{class:"lbl",text:"Боль наутро (0–5)"}),seg("pm-"+key,P,st.painMorning,v=>st.painMorning=v))));
-  const tech=el("input",{type:"number",min:"0",max:"300",inputmode:"numeric",id:"tech-"+key,placeholder:"не плыла"});if(lg.techMin!=null)tech.value=lg.techMin;
-  const hr=el("input",{type:"number",min:"60",max:"220",inputmode:"numeric",id:"hr-"+key,placeholder:"—"});if(lg.hr!=null)hr.value=lg.hr;
-  wrap.append(el("div",{class:"grid2"},
-    el("div",{class:"field"},el("label",{for:"tech-"+key,text:"Техника «поплыла» на минуте"}),tech),
-    el("div",{class:"field"},el("label",{for:"hr-"+key,text:"Средний пульс"}),hr)));
-  const note=el("textarea",{id:"note-"+key,placeholder:"Где болело, как спал, погода…"});note.value=lg.note||"";
+    el("div",{class:"field"},el("label",{for:"sleep-"+key,text:"Сон (часов)"}),sleep),
+    el("div",{class:"field"},el("span",{class:"lbl",text:"Боль утром (0–5)"}),seg("pm-"+key,P,st.painMorning,v=>st.painMorning=v))));
+  wrap.append(el("div",{class:"field"},el("span",{class:"lbl",text:"Как прошла тренировка"}),seg("st-"+key,[["done","Сделал"],["part","Частично"],["skip","Пропустил"]],st.status,v=>st.status=v)));
+  let hr=null;
+  const pd=el("div",{class:"field"},el("span",{class:"lbl",text:"Боль во время (0–5)"}),seg("pd-"+key,P,st.painDuring,v=>st.painDuring=v));
+  if(isRun){
+    hr=el("input",{type:"number",min:"60",max:"220",inputmode:"numeric",id:"hr-"+key,placeholder:"—"});if(lg.hr!=null)hr.value=lg.hr;
+    wrap.append(el("div",{class:"grid2"},pd,el("div",{class:"field"},el("label",{for:"hr-"+key,text:"Средний пульс"}),hr)));
+  } else wrap.append(pd);
+  const note=el("textarea",{id:"note-"+key,placeholder:"Где болело, погода, как ощущалось…"});note.value=lg.note||"";
   wrap.append(el("div",{class:"field"},el("label",{for:"note-"+key,text:"Заметка"}),note));
   const msg=el("span",{class:"hint"});
   const btn=el("button",{type:"button",class:"save",text:"Сохранить"});
   if(dbState!=="ok")btn.disabled=true;
   btn.addEventListener("click",async()=>{
-    const num=(i)=>i.value===""?null:Math.round(+i.value);
-    const body={date:key,status:st.status,painDuring:st.painDuring,painMorning:st.painMorning,techMin:num(tech),hr:num(hr),note:note.value.trim().slice(0,1000),updatedAt:new Date().toISOString()};
-    const empty=!body.status&&body.painDuring==null&&body.painMorning==null&&body.techMin==null&&body.hr==null&&!body.note;
+    const num=(i)=>!i||i.value===""?null:Math.round(+i.value);
+    const sl=sleep.value===""?null:Math.round(+sleep.value*2)/2;
+    const body={date:key,sleep:sl,painMorning:st.painMorning,status:st.status,painDuring:st.painDuring,hr:isRun?num(hr):(lg.hr??null),note:note.value.trim().slice(0,1000),updatedAt:new Date().toISOString()};
+    const empty=!body.status&&body.sleep==null&&body.painDuring==null&&body.painMorning==null&&body.hr==null&&!body.note;
     const next={...logs};if(empty)delete next[key];else next[key]=body;
     try{localStorage.setItem(LS,JSON.stringify(next));logs=next;msg.textContent="Сохранено";updateStatuses()}
     catch(e){msg.textContent="Не сохранилось: браузер запрещает хранение."}
@@ -504,10 +507,10 @@ function exportText(){
   const s={done:"сделал",part:"частично",skip:"пропустил"};
   const lines=["Дневник бега"];
   for(const k of keys){const l=logs[k];const p=[k];
+    if(l.sleep!=null)p.push("сон "+l.sleep+" ч");
+    if(l.painMorning!=null)p.push("боль утром "+l.painMorning+"/5");
     if(l.status)p.push(s[l.status]);
     if(l.painDuring!=null)p.push("боль во время "+l.painDuring+"/5");
-    if(l.painMorning!=null)p.push("наутро "+l.painMorning+"/5");
-    if(l.techMin!=null)p.push("техника поплыла на "+l.techMin+" мин");
     if(l.hr!=null)p.push("пульс "+l.hr);
     if(l.note)p.push(l.note.replace(/\s+/g," "));
     lines.push(p.join(" · "))}
